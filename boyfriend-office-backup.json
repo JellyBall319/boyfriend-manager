@@ -1,0 +1,191 @@
+{
+  "boyfriend": {
+    "name": "黃敏輝",
+    "nickname": "Sensei",
+    "startDate": "2026-07-23"
+  },
+  "score": 100,
+  "threshold": 45,
+  "events": [
+    {
+      "id": 1786595964835,
+      "type": "good",
+      "category": "陪伴",
+      "title": "經歷XXXXXXL 唔開心 聰明嘅S…",
+      "description": "經歷XXXXXXL 唔開心 聰明嘅Sensei (良心없어요) 為蠢蠢的魚下了最好的決定✨就係去見佢陪佢仲有同佢祈禱",
+      "points": 20,
+      "severity": "神級男友",
+      "date": "2026-08-08",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596159330,
+      "type": "bad",
+      "category": "溝通問題",
+      "title": "叫佢要執靚仔啲!! 佢都知有準備嘢但…",
+      "description": "叫佢要執靚仔啲!! 佢都知有準備嘢但好夜先到😵‍💫過分的人",
+      "points": -2,
+      "severity": "只係有啲唔gur",
+      "date": "2026-08-05",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596202654,
+      "type": "good",
+      "category": "幫手",
+      "title": "做家務💦💦",
+      "description": "做家務💦💦",
+      "points": 5,
+      "severity": "好貼心",
+      "date": "2026-08-08",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596273871,
+      "type": "good",
+      "category": "陪伴",
+      "title": "一齊買餸🥬🥩🥚🍤",
+      "description": "一齊買餸🥬🥩🥚🍤",
+      "points": 2,
+      "severity": "幾好",
+      "date": "2026-08-08",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596309637,
+      "type": "good",
+      "category": "特別安排",
+      "title": "黃大廚煮飯飯👨🏻‍🍳",
+      "description": "黃大廚煮飯飯👨🏻‍🍳",
+      "points": 10,
+      "severity": "非常貼心",
+      "date": "2026-08-08",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596355172,
+      "type": "good",
+      "category": "特別安排",
+      "title": "送小寶寶返工^_^開心係因為見到有人…",
+      "description": "送小寶寶返工^_^開心係因為見到有人會出盡奶力擠時間嘻嘻",
+      "points": 15,
+      "severity": "今日最佳",
+      "date": "2026-08-10",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596395115,
+      "type": "bad",
+      "category": "態度問題",
+      "title": "嫌棄我整的website👎🏻👎…",
+      "description": "嫌棄我整的website👎🏻👎🏻👎🏻大bad",
+      "points": -5,
+      "severity": "有啲嬲",
+      "date": "2026-08-09",
+      "remedy": "認真道歉",
+      "remedyStatus": "done",
+      "reply": {
+        "decision": "accepted",
+        "ack": "承認事件",
+        "text": "（跪低）\n對唔住bb",
+        "remedy": "認真道歉",
+        "due": "2026-08-09",
+        "createdAt": "2026-08-13T04:47:19.879Z"
+      }
+    },
+    {
+      "id": 1786596480432,
+      "type": "good",
+      "category": "陪食飯",
+      "title": "帶小寶寶食了想食的泡菜餅～雖然味道麻…",
+      "description": "帶小寶寶食了想食的泡菜餅～雖然味道麻麻💦但愛意滿滿",
+      "points": 5,
+      "severity": "好貼心",
+      "date": "2026-08-09",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596503245,
+      "type": "good",
+      "category": "幫手",
+      "title": "大力man抬12.1kg嘅甸甸用品返…",
+      "description": "大力man抬12.1kg嘅甸甸用品返屋企😘好愛",
+      "points": 10,
+      "severity": "非常貼心",
+      "date": "2026-08-09",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596529115,
+      "type": "good",
+      "category": "其他",
+      "title": "係超級無敵大傻瓜！我會一直遷就呢個可…",
+      "description": "係超級無敵大傻瓜！我會一直遷就呢個可愛嘅蠢蛋㗎👊🏻多謝你咁誠實分享自己軟弱嘅地方，係好大嘅一份信任哦✨下次唔可以背住我哭哭哼",
+      "points": 15,
+      "severity": "今日最佳",
+      "date": "2026-08-09",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786596562413,
+      "type": "good",
+      "category": "特別安排",
+      "title": "喺珠海磨爛蓆嘅小寶貝嚟接收工",
+      "description": "喺珠海磨爛蓆嘅小寶貝嚟接收工",
+      "points": 10,
+      "severity": "非常貼心",
+      "date": "2026-08-10",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    }
+  ],
+  "achievements": [],
+  "review": null,
+  "settings": {
+    "categories": [
+      "溝通問題",
+      "遲到／時間",
+      "訊息／電話",
+      "感情問題",
+      "唔記得",
+      "態度問題",
+      "日常生活",
+      "金錢",
+      "飲食",
+      "其他"
+    ]
+  },
+  "timeline": [
+    {
+      "title": "第一次約會",
+      "date": "2026-07-14",
+      "desc": "馬拉松式相睇大會，係咁俾人drill到勁深☕️仲要漏咗把遮行到九尺咁遠拎返!! 不過臨落車有人就話下次見🤓✨我哋會有幾多個下次呢",
+      "type": "positive"
+    },
+    {
+      "title": "開始喺一齊",
+      "date": "2026-07-23",
+      "desc": "會永遠記得有人點呃我表白🤗傻瓜到驚旅行返嚟我俾第二個match呃走咗🤌🏻但當聽到黃敏輝話驚失敗之後段關係就完結，如果未係時候，寧願再努力吓😗💦等到ready嘅時候開口就可以留住個關係☺️好啦放過你",
+      "type": "positive"
+    }
+  ]
+}
