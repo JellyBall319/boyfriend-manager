@@ -728,7 +728,24 @@ function saveGitHubToken(){
 
 function exportData(){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="boyfriend-office-backup.json";a.click();URL.revokeObjectURL(a.href);}
 function importData(ev){const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();toast("資料已匯入。");render("dashboard");}catch(e){toast("JSON 格式不正確。")}};r.readAsText(f);}
-function resetData(){if(!confirm("確定要清除所有資料並回復示範資料？"))return;data=structuredClone(seed);save();toast("資料已重設。");render("dashboard");}
+function resetData() {
+  if (!confirm("確定要清除所有資料並重置？（這將會清空所有歷史紀錄與時間線）")) return;
+
+  // 1. 複製預設結構
+  data = structuredClone(seed);
+  
+  // 2. 徹底清空事件與時間線陣列
+  data.events = [];
+  data.timeline = [];
+  data.score = 100;
+  data.achievements = [];
+  data.review = null;
+
+  // 3. 儲存並重新渲染
+  save();
+  toast("所有資料及時間線已成功清除！");
+  render("dashboard");
+}
 
 function saveReportPdf(){
  const reportContent=document.getElementById("modal").innerHTML;
