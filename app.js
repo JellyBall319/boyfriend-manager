@@ -114,12 +114,12 @@ async function syncToGitHub() {
   }, 500);
 }
 
-// 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage (已修復 CORS Header 問題)
+// 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage (無 CORS 阻擋版本)
 async function loadFromGitHub() {
   const token = getGitHubToken();
   if (!GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return false;
 
-  // 使用時間戳記 ?t=${Date.now()} 已經能達成防快取效果，不需加 Cache-Control Header
+  // 使用時間戳記 ?t=${Date.now()} 達成防快取效果
   const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
   
   const headers = {
@@ -135,7 +135,7 @@ async function loadFromGitHub() {
     if (res.ok) {
       const json = await res.json();
       
-      // UTF-8 安全解碼（支援中文/Emoji）
+      // UTF-8 安全解碼（支援中文與 Emoji）
       const decodedContent = decodeURIComponent(
         Array.prototype.map.call(atob(json.content.replace(/\s/g, '')), c => 
           '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
