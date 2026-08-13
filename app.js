@@ -47,18 +47,19 @@ function getGitHubToken() {
   return localStorage.getItem("bf-gh-token") || GITHUB_CONFIG.token;
 }
 
-// 取得 GitHub 上檔案現有的 SHA (GitHub API 覆蓋檔案時必填)
+// 取得 GitHub 上檔案現有的最新 SHA
 async function getGitHubFileSha() {
   const token = getGitHubToken();
   if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return null;
 
-  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}`;
+  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
   try {
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${token}`,
         Accept: "application/vnd.github.v3+json"
-      }
+      },
+      cache: "no-store"
     });
     if (res.ok) {
       const json = await res.json();
@@ -70,48 +71,54 @@ async function getGitHubFileSha() {
   return null;
 }
 
-// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案
+// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (修復 409 SHA 衝突問題)
 async function syncToGitHub() {
   const token = getGitHubToken();
   if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return;
 
-  clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(async () => {
-    try {
-      const sha = await getGitHubFileSha();
-      // 將 JSON 轉為 UTF-8 Base64 編碼
-      const jsonString = JSON.stringify(data, null, 2);
-      const contentEncoded = btoa(unescape(encodeURIComponent(jsonString)));
+  try {
+    // 1. 即時向 GitHub 獲取最新的 SHA（加上時間戳避免 API 回傳舊 SHA）
+    const sha = await getGitHubFileSha();
 
-      const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
-      const body = {
-        message: `auto: update boyfriend data [${new Date().toLocaleString()}]`,
-        content: contentEncoded,
-        branch: GITHUB_CONFIG.branch
-      };
-      if (sha) body.sha = sha;
+    // 2. 將 JSON 轉為 UTF-8 Base64 編碼
+    const jsonString = JSON.stringify(data, null, 2);
+    const contentEncoded = btoa(unescape(encodeURIComponent(jsonString)));
 
-      const res = await fetch(url, {
-        method: "PUT",
-        headers: {
-          Authorization: `token ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/vnd.github.v3+json"
-        },
-        body: JSON.stringify(body)
-      });
+    const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
+    const body = {
+      message: `auto: update boyfriend data [${new Date().toLocaleString()}]`,
+      content: contentEncoded,
+      branch: GITHUB_CONFIG.branch
+    };
+    if (sha) body.sha = sha;
 
-      if (res.ok) {
-        console.log("[GitHub Sync] 成功同步最新 JSON 到 GitHub Repo！");
-        toast("已自動更新至 GitHub 檔案");
-      } else {
-        const errJson = await res.json();
-        console.error("[GitHub Sync] 同步失敗:", errJson);
+    // 3. 發送 PUT 請求更新 GitHub 檔案
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/vnd.github.v3+json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      console.log("[GitHub Sync] 成功同步最新 JSON 到 GitHub Repo！");
+      toast("已自動更新至 GitHub 檔案");
+    } else {
+      const errJson = await res.json();
+      console.error("[GitHub Sync] 同步失敗:", errJson);
+      
+      // 如果不幸依然遇到 409 衝突，自動重試一次
+      if (res.status === 409) {
+        console.log("[GitHub Sync] 檢測到 SHA 衝突，正在自動重試...");
+        setTimeout(() => syncToGitHub(), 1000);
       }
-    } catch (err) {
-      console.error("[GitHub Sync] 發生錯誤:", err);
     }
-  }, 500);
+  } catch (err) {
+    console.error("[GitHub Sync] 發生錯誤:", err);
+  }
 }
 
 // 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage (無 CORS 阻擋版本)
