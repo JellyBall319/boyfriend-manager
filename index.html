@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>男友管理局</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">BF</div>
+        <div>
+          <div class="brand-title">男友管理局</div>
+          <div class="brand-sub">BOYFRIEND OFFICE</div>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-item active" data-page="dashboard">🏠 <span>首頁</span></button>
+        <button class="nav-item" data-page="record">📝 <span>記錄</span></button>
+        <button class="nav-item" data-page="history">📜 <span>紀錄</span></button>
+        <button class="nav-item" data-page="performance">📊 <span>表現</span></button>
+        <button class="nav-item" data-page="settings">⚙️ <span>設定</span></button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="mini-status"><span class="dot"></span> 系統運作正常</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">BOYFRIEND MANAGEMENT</div>
+          <h1 id="pageTitle">男友管理局</h1>
+        </div>
+        <button class="icon-btn" id="settingsQuick" title="設定">⚙</button>
+      </header>
+
+      <section id="appContent"></section>
+    </main>
+
+    <nav class="mobile-nav">
+      <button class="nav-item active" data-page="dashboard">🏠 <span>首頁</span></button>
+      <button class="nav-item" data-page="record">📝 <span>記錄</span></button>
+      <button class="nav-item" data-page="history">📜 <span>紀錄</span></button>
+      <button class="nav-item" data-page="performance">📊 <span>表現</span></button>
+      <button class="nav-item" data-page="settings">⚙️ <span>設定</span></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-backdrop hidden" id="modalBackdrop">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
