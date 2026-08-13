@@ -39,10 +39,11 @@ function load(){
   catch(e){ return structuredClone(seed); }
 }
 
-function save(){ 
+function save() { 
+  recalculateScore(); // 👈 每次儲存前，強制由舊至新重新演算一次精確分數
   localStorage.setItem(STORAGE, JSON.stringify(data)); 
   syncToSheet(); 
-  syncToGitHub(); // 每次儲存自動觸發 GitHub 同步
+  syncToGitHub(); 
 }
 
 // 取得有效的 GitHub Token (優先使用 localStorage 內儲存的 Token)
@@ -230,6 +231,7 @@ async function loadFromGitHub() {
       
       if (githubData && Array.isArray(githubData.events)) {
         data = githubData;
+        recalculateScore();
         localStorage.setItem(STORAGE, JSON.stringify(data));
         console.log("[GitHub Load] 成功從 GitHub API 載入最新數據！");
         return true;
@@ -265,6 +267,28 @@ function syncToSheet(){
     _lastSync = new Date();
     console.log("[v0] sheet sync sent", payload.events.length, "events");
   }).catch(err=>console.log("[v0] sheet sync failed", err));
+}
+
+// 重新根據所有事件（按日期由舊至新）精確計算總分
+function recalculateScore() {
+  // 1. 先將事件按日期由舊至新排序（舊的先算，新的後算）
+  const sortedEvents = [...data.events].sort((a, b) => a.date.localeCompare(b.date));
+  
+  // 2. 由基礎 100 分開始累加/累扣
+  let currentScore = 100;
+
+  sortedEvents.forEach(e => {
+    currentScore += Number(e.points) || 0;
+
+    // 如果該事件有被拒絕的回條，追加扣 5 分
+    if (e.reply && e.reply.decision === "rejected") {
+      currentScore -= 5;
+    }
+    // 如果該事件回條被接受，返還分數 (接受時最多補到 100 分的機制可在這裡算，或直接加返還分)
+  });
+
+  // 3. 確保分數在 0 至 100 分之間，並更新至全局 data
+  data.score = Math.max(0, Math.min(100, currentScore));
 }
 
 function escapeHtml(s=""){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
