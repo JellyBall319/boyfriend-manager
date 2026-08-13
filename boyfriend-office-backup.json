@@ -4,7 +4,7 @@
     "nickname": "Sensei",
     "startDate": "2026-07-23"
   },
-  "score": 98,
+  "score": 100,
   "threshold": 45,
   "events": [
     {
@@ -153,6 +153,19 @@
       "points": 10,
       "severity": "非常貼心",
       "date": "2026-08-10",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
+    },
+    {
+      "id": 1786601669574,
+      "type": "good",
+      "category": "體貼",
+      "title": "a",
+      "description": "a",
+      "points": 5,
+      "severity": "好貼心",
+      "date": "2026-08-13",
       "remedy": null,
       "remedyStatus": null,
       "reply": null
