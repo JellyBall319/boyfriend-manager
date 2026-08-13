@@ -43,11 +43,11 @@ function load(){
   }
 }
 
-// 正確的計分邏輯：滿分 100，好事作紀錄與成就，嬲事直接扣分
+// 強效修正版：精確扣分，自動相容各種資料格式
 function recalculateScore() {
   if (!data || !Array.isArray(data.events)) return;
 
-  // 1. 按日期由舊至新排序（時間相同則按 ID 舊至新）
+  // 1. 按日期由舊至新排序
   const sortedEvents = [...data.events].sort((a, b) => {
     if (a.date === b.date) return (a.id || 0) - (b.id || 0);
     return a.date.localeCompare(b.date);
@@ -57,10 +57,15 @@ function recalculateScore() {
   let currentScore = 100;
 
   sortedEvents.forEach(e => {
-    // 只對「嬲事（bad）」進行扣分
-    if (e.type === "bad") {
-      // e.points 本身是負數（例如 -2, -5），直接累加
-      currentScore += Number(e.points) || 0;
+    // 強制把 type 轉小寫，防止大小寫不匹配 (例如 "Bad" 或 "bad")
+    const eventType = String(e.type || "").toLowerCase();
+
+    if (eventType === "bad") {
+      let rawPoints = Number(e.points) || 0;
+      
+      // 確保扣分一定是減法 (無論 points 填的是 -5 還是 5)
+      let deductAmount = Math.abs(rawPoints);
+      currentScore -= deductAmount;
 
       // 處理回條審核結果
       if (e.reply && e.reply.decision === "rejected") {
@@ -73,6 +78,7 @@ function recalculateScore() {
 
   // 3. 確保總分在 0 至 100 分之間
   data.score = Math.max(0, Math.min(100, currentScore));
+  console.log("[Score Calc] 重新計算完成，目前精確總分為：", data.score);
 }
 
 function save() { 
