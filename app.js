@@ -11,6 +11,7 @@ const GITHUB_CONFIG = {
   token: ""                   // 可留空，建議在網頁「設定」頁面輸入 Token 儲存
 };
 
+
 const seed = {
   boyfriend: { name: "黃敏輝", nickname: "Sensei", startDate: "2026-07-23" },
   score: 100,
