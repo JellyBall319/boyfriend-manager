@@ -169,6 +169,19 @@
       "remedy": null,
       "remedyStatus": null,
       "reply": null
+    },
+    {
+      "id": 1786602669055,
+      "type": "bad",
+      "category": "溝通問題",
+      "title": "asd",
+      "description": "asd",
+      "points": -20,
+      "severity": "巨嬲",
+      "date": "2026-08-13",
+      "remedy": null,
+      "remedyStatus": null,
+      "reply": null
     }
   ],
   "achievements": [],
