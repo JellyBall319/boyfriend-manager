@@ -4,10 +4,10 @@ const STORAGE = "bf-office-v1";
 // 1. GitHub 自動同步設定
 // ==========================================
 const GITHUB_CONFIG = {
-  owner: "JellyBall319",     // ⚠️ 請修改為你的 GitHub Username
-  repo: "boyfriend-manager",         // ⚠️ 請修改為你的 Repository 名稱
+  owner: "JellyBall319",     // ⚠️ GitHub Username
+  repo: "boyfriend-manager", // ⚠️ Repository 名稱
   filePath: "boyfriend-office-backup.json", // 儲存在 Repo 內的 JSON 檔名
-  branch: "main",             // 分支名稱 (通常是 main 或 master)
+  branch: "main",             // 分支名稱 (main 或 master)
   token: ""                   // 可留空，建議在網頁「設定」頁面輸入 Token 儲存
 };
 
@@ -18,8 +18,8 @@ const seed = {
   events: [],
   achievements: [],
   review: null,
-  settings: {categories:["溝通問題","遲到／時間","訊息／電話","感情問題","唔記得","態度問題","日常生活","金錢","飲食","其他"]}
-  ,timeline:[
+  settings: {categories:["溝通問題","遲到／時間","訊息／電話","感情問題","唔記得","態度問題","日常生活","金錢","飲食","其他"]},
+  timeline:[
     {title:'第一次約會',date:'2026-07-14',desc:'馬拉松式相睇大會，係咁俾人drill到勁深☕️仲要漏咗把遮行到九尺咁遠拎返!! 不過臨落車有人就話下次見🤓✨我哋會有幾多個下次呢',type:'positive'},
     {title:'開始喺一齊',date:'2026-07-23',desc:'會永遠記得有人點呃我表白🤗傻瓜到驚旅行返嚟我俾第二個match呃走咗🤌🏻但當聽到黃敏輝話驚失敗之後段關係就完結，如果未係時候，寧願再努力吓😗💦等到ready嘅時候開口就可以留住個關係☺️好啦放過你',type:'positive'}
   ]
@@ -32,26 +32,59 @@ let _syncTimer = null;
 let _lastSync = null;
 let _isGitHubSyncing = false;
 let _hasPendingGitHubSync = false;
-let _cachedGitHubSha = null; // 快取最新 SHA，減少 API 查詢
+let _cachedGitHubSha = null;
 
 function load(){
-  try { return JSON.parse(localStorage.getItem(STORAGE)) || structuredClone(seed); }
-  catch(e){ return structuredClone(seed); }
+  try { 
+    const loaded = JSON.parse(localStorage.getItem(STORAGE)) || structuredClone(seed);
+    return loaded;
+  } catch(e){ 
+    return structuredClone(seed); 
+  }
+}
+
+// 核心計分邏輯：由舊至新依序重新計算精確分數
+function recalculateScore() {
+  if (!data || !Array.isArray(data.events)) return;
+
+  // 1. 按日期由舊至新排序（時間相同則按 ID 舊至新）
+  const sortedEvents = [...data.events].sort((a, b) => {
+    if (a.date === b.date) return (a.id || 0) - (b.id || 0);
+    return a.date.localeCompare(b.date);
+  });
+  
+  // 2. 由基礎 100 分起算
+  let currentScore = 100;
+
+  sortedEvents.forEach(e => {
+    // 加上事件本身分數（加分或扣分）
+    currentScore += Number(e.points) || 0;
+
+    // 處理回條審核結果
+    if (e.reply && e.reply.decision === "rejected") {
+      currentScore -= 5; // 拒絕回條：追加扣 5 分
+    } else if (e.reply && e.reply.decision === "accepted") {
+      currentScore += 3; // 接受回條：返還 3 分
+    }
+
+    // 每次累算都限制上限 100 分，下限 0 分
+    currentScore = Math.max(0, Math.min(100, currentScore));
+  });
+
+  data.score = currentScore;
 }
 
 function save() { 
-  recalculateScore(); // 👈 每次儲存前，強制由舊至新重新演算一次精確分數
+  recalculateScore(); // 每次儲存前，強制由舊至新重新演算分數
   localStorage.setItem(STORAGE, JSON.stringify(data)); 
   syncToSheet(); 
   syncToGitHub(); 
 }
 
-// 取得有效的 GitHub Token (優先使用 localStorage 內儲存的 Token)
 function getGitHubToken() {
   return localStorage.getItem("bf-gh-token") || GITHUB_CONFIG.token;
 }
 
-// 取得 GitHub 上檔案現有的最新 SHA
 async function getGitHubFileSha() {
   const token = getGitHubToken();
   if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return null;
@@ -74,29 +107,25 @@ async function getGitHubFileSha() {
   return null;
 }
 
-// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (防連續發送隊列版)
+// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (隊列與防衝突版)
 async function syncToGitHub() {
   const token = getGitHubToken();
   if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return;
 
-  // 如果目前正在同步中，標記有新修改等待中，然後直接退出（避免重複衝突）
   if (_isGitHubSyncing) {
     _hasPendingGitHubSync = true;
     console.log("[GitHub Sync] 正在同步中，已將新操作排入佇列...");
     return;
   }
 
-  // 鎖定同步狀態
   _isGitHubSyncing = true;
 
   try {
-    // 優先使用上次 Commit 回傳的最新 SHA，若無則向 API 獲取
     let sha = _cachedGitHubSha;
     if (!sha) {
       sha = await getGitHubFileSha();
     }
 
-    // 將 JSON 轉為 UTF-8 Base64 編碼
     const jsonString = JSON.stringify(data, null, 2);
     const contentEncoded = btoa(unescape(encodeURIComponent(jsonString)));
 
@@ -120,7 +149,6 @@ async function syncToGitHub() {
 
     if (res.ok) {
       const resJson = await res.json();
-      // 更新快取的 SHA 為 GitHub 剛產生的最新 SHA
       if (resJson.content && resJson.content.sha) {
         _cachedGitHubSha = resJson.content.sha;
       }
@@ -129,98 +157,33 @@ async function syncToGitHub() {
     } else {
       const errJson = await res.json();
       console.error("[GitHub Sync] 同步失敗:", errJson);
-      // 清空快取的 SHA，讓下一次重試重新向 API 查詢
       _cachedGitHubSha = null;
     }
   } catch (err) {
     console.error("[GitHub Sync] 發生錯誤:", err);
     _cachedGitHubSha = null;
   } finally {
-    // 解除同步鎖定
     _isGitHubSyncing = false;
-
-    // 如果在剛才同步期間又有新的修改（_hasPendingGitHubSync 為 true），立刻觸發下一輪同步
     if (_hasPendingGitHubSync) {
       _hasPendingGitHubSync = false;
       console.log("[GitHub Sync] 處理佇列中的累積修改...");
-      // 給予 500ms 緩衝時間讓 GitHub 伺服器寫入完畢
       setTimeout(() => syncToGitHub(), 500);
     }
   }
 }
 
-// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (修復 409 SHA 衝突問題)
-async function syncToGitHub() {
-  const token = getGitHubToken();
-  if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return;
-
-  try {
-    // 1. 即時向 GitHub 獲取最新的 SHA（加上時間戳避免 API 回傳舊 SHA）
-    const sha = await getGitHubFileSha();
-
-    // 2. 將 JSON 轉為 UTF-8 Base64 編碼
-    const jsonString = JSON.stringify(data, null, 2);
-    const contentEncoded = btoa(unescape(encodeURIComponent(jsonString)));
-
-    const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
-    const body = {
-      message: `auto: update boyfriend data [${new Date().toLocaleString()}]`,
-      content: contentEncoded,
-      branch: GITHUB_CONFIG.branch
-    };
-    if (sha) body.sha = sha;
-
-    // 3. 發送 PUT 請求更新 GitHub 檔案
-    const res = await fetch(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `token ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/vnd.github.v3+json"
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (res.ok) {
-      console.log("[GitHub Sync] 成功同步最新 JSON 到 GitHub Repo！");
-      toast("已自動更新至 GitHub 檔案");
-    } else {
-      const errJson = await res.json();
-      console.error("[GitHub Sync] 同步失敗:", errJson);
-      
-      // 如果不幸依然遇到 409 衝突，自動重試一次
-      if (res.status === 409) {
-        console.log("[GitHub Sync] 檢測到 SHA 衝突，正在自動重試...");
-        setTimeout(() => syncToGitHub(), 1000);
-      }
-    }
-  } catch (err) {
-    console.error("[GitHub Sync] 發生錯誤:", err);
-  }
-}
-
-// 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage (無 CORS 阻擋版本)
 async function loadFromGitHub() {
   const token = getGitHubToken();
   if (!GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return false;
 
-  // 使用時間戳記 ?t=${Date.now()} 達成防快取效果
   const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
-  
-  const headers = {
-    Accept: "application/vnd.github.v3+json"
-  };
-  
-  if (token) {
-    headers.Authorization = `token ${token}`;
-  }
+  const headers = { Accept: "application/vnd.github.v3+json" };
+  if (token) headers.Authorization = `token ${token}`;
 
   try {
     const res = await fetch(url, { headers });
     if (res.ok) {
       const json = await res.json();
-      
-      // UTF-8 安全解碼（支援中文與 Emoji）
       const decodedContent = decodeURIComponent(
         Array.prototype.map.call(atob(json.content.replace(/\s/g, '')), c => 
           '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
@@ -228,12 +191,11 @@ async function loadFromGitHub() {
       );
       
       const githubData = JSON.parse(decodedContent);
-      
       if (githubData && Array.isArray(githubData.events)) {
         data = githubData;
-        recalculateScore();
+        recalculateScore(); // 載入資料後，重新正確計算總分
         localStorage.setItem(STORAGE, JSON.stringify(data));
-        console.log("[GitHub Load] 成功從 GitHub API 載入最新數據！");
+        console.log("[GitHub Load] 成功載入並重新校正分數！");
         return true;
       }
     } else {
@@ -245,7 +207,6 @@ async function loadFromGitHub() {
   return false;
 }
 
-// Mirror all data to the Google Apps Script web app (localStorage stays the source of truth).
 function syncToSheet(){
   if(!SHEET_URL) return;
   const payload = {
@@ -267,28 +228,6 @@ function syncToSheet(){
     _lastSync = new Date();
     console.log("[v0] sheet sync sent", payload.events.length, "events");
   }).catch(err=>console.log("[v0] sheet sync failed", err));
-}
-
-// 重新根據所有事件（按日期由舊至新）精確計算總分
-function recalculateScore() {
-  // 1. 先將事件按日期由舊至新排序（舊的先算，新的後算）
-  const sortedEvents = [...data.events].sort((a, b) => a.date.localeCompare(b.date));
-  
-  // 2. 由基礎 100 分開始累加/累扣
-  let currentScore = 100;
-
-  sortedEvents.forEach(e => {
-    currentScore += Number(e.points) || 0;
-
-    // 如果該事件有被拒絕的回條，追加扣 5 分
-    if (e.reply && e.reply.decision === "rejected") {
-      currentScore -= 5;
-    }
-    // 如果該事件回條被接受，返還分數 (接受時最多補到 100 分的機制可在這裡算，或直接加返還分)
-  });
-
-  // 3. 確保分數在 0 至 100 分之間，並更新至全局 data
-  data.score = Math.max(0, Math.min(100, currentScore));
 }
 
 function escapeHtml(s=""){ return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c])); }
@@ -491,8 +430,9 @@ function submitEvent(type){
  if(!date){toast("請選擇事件日期。");return}
  const lv=window._levels[level<0?0:level];
  const e={id:uid(),type,category:document.getElementById("fcat").value,title:desc.length>18?desc.slice(0,18)+"…":desc,description:desc,points:lv[1],severity:lv[0],date,remedy:type==="bad"?(document.getElementById("fremedy").value||null):null,remedyStatus:type==="bad"&&document.getElementById("fremedy").value?"pending":null,reply:null};
- data.events.push(e); save();
- save(); closeModal(); toast(type==="bad"?"已正式記錄在案。":"❤️ 已記錄呢份好表現。");
+ data.events.push(e); 
+ save(); // save 內部會自動重算分數
+ closeModal(); toast(type==="bad"?"已正式記錄在案。":"❤️ 已記錄呢份好表現。");
  if(data.score<=data.threshold) setTimeout(()=>reviewModal(),400);
  render("dashboard");
 }
@@ -527,7 +467,7 @@ function eventDetail(id){
 }
 
 function completeRemedy(id){const e=data.events.find(x=>x.id===id);e.remedyStatus="done";save();closeModal();toast("補救已完成。");render("history");}
-function deleteEvent(id){if(!confirm("確定要刪除呢項紀錄？"))return;const i=data.events.findIndex(x=>x.id===id);if(i<0)return;const e=data.events[i];data.events.splice(i,1);save();closeModal();toast("紀錄已刪除。");render("history");}
+function deleteEvent(id){if(!confirm("確定要刪除呢項紀錄？"))return;const i=data.events.findIndex(x=>x.id===id);if(i<0)return;data.events.splice(i,1);save();closeModal();toast("紀錄已刪除。");render("history");}
 
 function editEvent(id){
  const e=data.events.find(x=>x.id===id);if(!e)return;
@@ -557,7 +497,6 @@ function saveEventEdits(id){
  if(!desc){toast("請先寫低發生咗嘅內容。");return}
  if(!date){toast("請選擇事件日期。");return}
  const lv=window._levels[level<0?0:level];
- const oldPoints=e.points;
  e.date=date;
  e.category=document.getElementById("fcat").value;
  e.description=desc;
@@ -605,12 +544,23 @@ function replyReviewModal(id){
 }
 
 function acceptReply(id){
- const e=data.events.find(x=>x.id===id);e.reply.decision="accepted";e.remedyStatus="done";
- const bonus=Math.min(3,100-data.score);data.score+=bonus;save();closeModal();toast(`補救接受，返還 ${bonus} 分。`);render("history");
+ const e=data.events.find(x=>x.id===id);
+ e.reply.decision="accepted";
+ e.remedyStatus="done";
+ save(); // save 會自動根據 decision === "accepted" 計算返還分數
+ closeModal();
+ toast("補救已接受。");
+ render("history");
 }
 
 function rejectReply(id){
- const e=data.events.find(x=>x.id===id);e.reply.decision="rejected";e.remedyStatus="pending";data.score=Math.max(0,data.score-5);save();closeModal();toast("回條被拒，追加扣 5 分。");render("history");
+ const e=data.events.find(x=>x.id===id);
+ e.reply.decision="rejected";
+ e.remedyStatus="pending";
+ save(); // save 會自動根據 decision === "rejected" 計算扣分
+ closeModal();
+ toast("回條被拒，追加扣 5 分。");
+ render("history");
 }
 
 function performancePage(){
@@ -797,7 +747,8 @@ function bindPage(){
  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>render(b.dataset.go));
 }
 
-// 頁面初始化：先從 GitHub 載入最新 JSON，再渲染頁面
+// 頁面初始化：先從 GitHub 載入最新 JSON 並校正分數，再渲染頁面
+recalculateScore(); // 本地啟動時先算一次
 loadFromGitHub().finally(() => {
   render("dashboard");
 });
