@@ -491,7 +491,7 @@ function submitEvent(type){
  if(!date){toast("請選擇事件日期。");return}
  const lv=window._levels[level<0?0:level];
  const e={id:uid(),type,category:document.getElementById("fcat").value,title:desc.length>18?desc.slice(0,18)+"…":desc,description:desc,points:lv[1],severity:lv[0],date,remedy:type==="bad"?(document.getElementById("fremedy").value||null):null,remedyStatus:type==="bad"&&document.getElementById("fremedy").value?"pending":null,reply:null};
- data.events.push(e); data.score=Math.max(0,Math.min(100,data.score+e.points));
+ data.events.push(e); save();
  save(); closeModal(); toast(type==="bad"?"已正式記錄在案。":"❤️ 已記錄呢份好表現。");
  if(data.score<=data.threshold) setTimeout(()=>reviewModal(),400);
  render("dashboard");
@@ -527,7 +527,7 @@ function eventDetail(id){
 }
 
 function completeRemedy(id){const e=data.events.find(x=>x.id===id);e.remedyStatus="done";save();closeModal();toast("補救已完成。");render("history");}
-function deleteEvent(id){if(!confirm("確定要刪除呢項紀錄？"))return;const i=data.events.findIndex(x=>x.id===id);if(i<0)return;const e=data.events[i];data.score=Math.max(0,Math.min(100,data.score-e.points));data.events.splice(i,1);save();closeModal();toast("紀錄已刪除。");render("history");}
+function deleteEvent(id){if(!confirm("確定要刪除呢項紀錄？"))return;const i=data.events.findIndex(x=>x.id===id);if(i<0)return;const e=data.events[i];data.events.splice(i,1);save();closeModal();toast("紀錄已刪除。");render("history");}
 
 function editEvent(id){
  const e=data.events.find(x=>x.id===id);if(!e)return;
@@ -570,7 +570,6 @@ function saveEventEdits(id){
      if(e.remedy!==remedy){e.remedyStatus="pending";} e.remedy=remedy;
    }
  }
- data.score=Math.max(0,Math.min(100,data.score-oldPoints+e.points));
  save();closeModal();toast("紀錄已更新。");render("history");
 }
 
