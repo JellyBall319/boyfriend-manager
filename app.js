@@ -85,7 +85,11 @@ function save() {
   syncToGitHub(); 
 }
 
+// 取得有效的 GitHub Token (優先讀取 config.js 中的 ENV_CONFIG)
 function getGitHubToken() {
+  if (window.ENV_CONFIG && window.ENV_CONFIG.GITHUB_TOKEN) {
+    return window.ENV_CONFIG.GITHUB_TOKEN;
+  }
   return localStorage.getItem("bf-gh-token") || GITHUB_CONFIG.token;
 }
 
