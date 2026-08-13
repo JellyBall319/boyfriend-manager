@@ -156,19 +156,6 @@
       "remedy": null,
       "remedyStatus": null,
       "reply": null
-    },
-    {
-      "id": 1786602230111,
-      "type": "good",
-      "category": "體貼",
-      "title": "asd",
-      "description": "asd",
-      "points": 5,
-      "severity": "好貼心",
-      "date": "2026-08-13",
-      "remedy": null,
-      "remedyStatus": null,
-      "reply": null
     }
   ],
   "achievements": [],
