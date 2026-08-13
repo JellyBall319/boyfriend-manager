@@ -114,16 +114,16 @@ async function syncToGitHub() {
   }, 500);
 }
 
-// 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage
+// 強制從 GitHub API 獲取最新資料並覆蓋本地 LocalStorage (已修復 CORS Header 問題)
 async function loadFromGitHub() {
   const token = getGitHubToken();
   if (!GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return false;
 
+  // 使用時間戳記 ?t=${Date.now()} 已經能達成防快取效果，不需加 Cache-Control Header
   const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
   
   const headers = {
-    Accept: "application/vnd.github.v3+json",
-    "Cache-Control": "no-cache"
+    Accept: "application/vnd.github.v3+json"
   };
   
   if (token) {
@@ -131,11 +131,11 @@ async function loadFromGitHub() {
   }
 
   try {
-    const res = await fetch(url, { headers, cache: "no-store" });
+    const res = await fetch(url, { headers });
     if (res.ok) {
       const json = await res.json();
       
-      // 正確安全解碼 UTF-8
+      // UTF-8 安全解碼（支援中文/Emoji）
       const decodedContent = decodeURIComponent(
         Array.prototype.map.call(atob(json.content.replace(/\s/g, '')), c => 
           '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
@@ -145,33 +145,19 @@ async function loadFromGitHub() {
       const githubData = JSON.parse(decodedContent);
       
       if (githubData && Array.isArray(githubData.events)) {
-        // 全局資料直接覆蓋
         data = githubData;
-        // 同時更新 LocalStorage
         localStorage.setItem(STORAGE, JSON.stringify(data));
-        console.log("[GitHub Load] 成功從 GitHub 載入最新數據（已刪除記錄已同步）");
+        console.log("[GitHub Load] 成功從 GitHub API 載入最新數據！");
         return true;
       }
     } else {
-      console.warn("[GitHub Load] 讀取失敗，狀態碼：", res.status);
+      console.warn("[GitHub Load] API 讀取失敗，狀態碼：", res.status);
     }
   } catch (e) {
     console.error("[GitHub Load] 讀取過程發生錯誤：", e);
   }
   return false;
 }
-
-// 頁面啟動流程：等 GitHub 數據載入完全完成後，才進行第一次 render
-(async function initApp() {
-  // 先嘗試從 GitHub 獲取最新資料
-  const success = await loadFromGitHub();
-  if (!success) {
-    console.log("[Init] 無法從 GitHub 取得最新資料，使用本地 LocalStorage 備份");
-  }
-  // 載入完成後才渲染頁面
-  render("dashboard");
-})();
-
 
 // Mirror all data to the Google Apps Script web app (localStorage stays the source of truth).
 function syncToSheet(){
