@@ -43,42 +43,38 @@ function load(){
   }
 }
 
-// 強效修正版：精確扣分，自動相容各種資料格式
+// 按時間由舊至新演算：所有加減分都參與，且隨時限定在 0 至 100 分之間
 function recalculateScore() {
   if (!data || !Array.isArray(data.events)) return;
 
-  // 1. 按日期由舊至新排序
+  // 1. 嚴格按日期由舊至新排序（如果日期相同，則按 ID/建立時間舊至新）
   const sortedEvents = [...data.events].sort((a, b) => {
     if (a.date === b.date) return (a.id || 0) - (b.id || 0);
     return a.date.localeCompare(b.date);
   });
   
-  // 2. 從滿分 100 分開始
+  // 2. 初始分數 100 分
   let currentScore = 100;
 
+  // 3. 逐筆依時間推算
   sortedEvents.forEach(e => {
-    // 強制把 type 轉小寫，防止大小寫不匹配 (例如 "Bad" 或 "bad")
-    const eventType = String(e.type || "").toLowerCase();
+    let points = Number(e.points) || 0;
+    
+    // 累加或累扣該事件的分數
+    currentScore += points;
 
-    if (eventType === "bad") {
-      let rawPoints = Number(e.points) || 0;
-      
-      // 確保扣分一定是減法 (無論 points 填的是 -5 還是 5)
-      let deductAmount = Math.abs(rawPoints);
-      currentScore -= deductAmount;
-
-      // 處理回條審核結果
-      if (e.reply && e.reply.decision === "rejected") {
-        currentScore -= 5; // 拒絕回條：追加扣 5 分
-      } else if (e.reply && e.reply.decision === "accepted") {
-        currentScore += 3; // 接受回條：返還 3 分
-      }
+    // 處理回條結果
+    if (e.reply && e.reply.decision === "rejected") {
+      currentScore -= 5; // 拒絕回條：追加扣 5 分
     }
+
+    // 關鍵：每算完一筆，立刻套用 0~100 的區間限制
+    // 這樣後面的「好事」就能把之前的「扣分」補救回 100 分，且不會無限超出 100 分
+    currentScore = Math.max(0, Math.min(100, currentScore));
   });
 
-  // 3. 確保總分在 0 至 100 分之間
-  data.score = Math.max(0, Math.min(100, currentScore));
-  console.log("[Score Calc] 重新計算完成，目前精確總分為：", data.score);
+  data.score = currentScore;
+  console.log("[Score Calc] 重新校正完成，最新總分：", data.score);
 }
 
 function save() { 
