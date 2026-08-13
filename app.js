@@ -43,7 +43,7 @@ function load(){
   }
 }
 
-// 核心計分邏輯：由舊至新依序重新計算精確分數
+// 正確的計分邏輯：滿分 100，好事作紀錄與成就，嬲事直接扣分
 function recalculateScore() {
   if (!data || !Array.isArray(data.events)) return;
 
@@ -53,25 +53,26 @@ function recalculateScore() {
     return a.date.localeCompare(b.date);
   });
   
-  // 2. 由基礎 100 分起算
+  // 2. 從滿分 100 分開始
   let currentScore = 100;
 
   sortedEvents.forEach(e => {
-    // 加上事件本身分數（加分或扣分）
-    currentScore += Number(e.points) || 0;
+    // 只對「嬲事（bad）」進行扣分
+    if (e.type === "bad") {
+      // e.points 本身是負數（例如 -2, -5），直接累加
+      currentScore += Number(e.points) || 0;
 
-    // 處理回條審核結果
-    if (e.reply && e.reply.decision === "rejected") {
-      currentScore -= 5; // 拒絕回條：追加扣 5 分
-    } else if (e.reply && e.reply.decision === "accepted") {
-      currentScore += 3; // 接受回條：返還 3 分
+      // 處理回條審核結果
+      if (e.reply && e.reply.decision === "rejected") {
+        currentScore -= 5; // 拒絕回條：追加扣 5 分
+      } else if (e.reply && e.reply.decision === "accepted") {
+        currentScore += 3; // 接受回條：返還 3 分
+      }
     }
-
-    // 每次累算都限制上限 100 分，下限 0 分
-    currentScore = Math.max(0, Math.min(100, currentScore));
   });
 
-  data.score = currentScore;
+  // 3. 確保總分在 0 至 100 分之間
+  data.score = Math.max(0, Math.min(100, currentScore));
 }
 
 function save() { 
