@@ -85,34 +85,20 @@ function save() {
   syncToGitHub(); 
 }
 
-// 取得有效的 GitHub Token (優先讀取 config.js 中的 ENV_CONFIG)
+// 取得有效的 GitHub Token
 function getGitHubToken() {
-  if (window.ENV_CONFIG && window.ENV_CONFIG.GITHUB_TOKEN) {
-    return window.ENV_CONFIG.GITHUB_TOKEN;
-  }
-  return localStorage.getItem("bf-gh-token") || GITHUB_CONFIG.token;
-}
-
-async function getGitHubFileSha() {
-  const token = getGitHubToken();
-  if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return null;
-
-  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
-  try {
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `token ${token}`,
-        Accept: "application/vnd.github.v3+json"
-      }
-    });
-    if (res.ok) {
-      const json = await res.json();
-      return json.sha;
+  // 1. 優先從瀏覽器本地儲存讀取
+  let token = localStorage.getItem("bf-gh-token");
+  
+  // 2. 如果從未設定過 Token，彈出視窗要求輸入一次，並永久存入 localStorage
+  if (!token) {
+    token = prompt("請貼上你的 GitHub Personal Access Token (此 Token 只會存於你的瀏覽器內，只需輸入一次)：");
+    if (token && token.trim() !== "") {
+      token = token.trim();
+      localStorage.setItem("bf-gh-token", token);
     }
-  } catch (err) {
-    console.error("無法取得 GitHub 檔案 SHA:", err);
   }
-  return null;
+  return token;
 }
 
 // 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (隊列與防衝突版)
