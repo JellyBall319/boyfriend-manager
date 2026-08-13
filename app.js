@@ -114,21 +114,49 @@ async function syncToGitHub() {
   }, 500);
 }
 
-// 開頁時優先從 GitHub 讀取最新的 JSON 檔案
+// 改用 GitHub API 讀取，突破 CDN 快取限制
 async function loadFromGitHub() {
+  const token = getGitHubToken();
   if (!GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return;
-  const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${GITHUB_CONFIG.filePath}?t=${Date.now()}`;
+
+  // 使用 API Endpoint，並傳送 Cache-Control Header
+  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}?ref=${GITHUB_CONFIG.branch}&t=${Date.now()}`;
+  
+  const headers = {
+    Accept: "application/vnd.github.v3+json",
+    "Cache-Control": "no-cache"
+  };
+  
+  // 如果有 Token 則帶上（如果是 Private Repo 必須，Public Repo 也能增加 API Limit）
+  if (token) {
+    headers.Authorization = `token ${token}`;
+  }
+
   try {
-    const res = await fetch(rawUrl);
+    const res = await fetch(url, { headers });
     if (res.ok) {
-      const githubData = await res.json();
-      data = githubData;
-      localStorage.setItem(STORAGE, JSON.stringify(data));
-      console.log("[GitHub Load] 已載入 GitHub 最新資料");
-      render("dashboard");
+      const json = await res.json();
+      
+      // GitHub API 回傳的內容是 Base64，進行 UTF-8 安全解碼
+      const decodedContent = decodeURIComponent(
+        Array.prototype.map.call(atob(json.content.replace(/\s/g, '')), c => 
+          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join('')
+      );
+      
+      const githubData = JSON.parse(decodedContent);
+      
+      // 確保抓到的 JSON 格式合法才覆蓋
+      if (githubData && githubData.events) {
+        data = githubData;
+        localStorage.setItem(STORAGE, JSON.stringify(data));
+        console.log("[GitHub Load] 成功載入 GitHub 最新即時資料！");
+      }
+    } else {
+      console.warn("[GitHub Load] API 回傳狀態異常，繼續使用本地資料", res.status);
     }
   } catch (e) {
-    console.log("[GitHub Load] 使用本地 localStorage 資料");
+    console.error("[GitHub Load] 讀取 GitHub 資料失敗，使用本地 localStorage 資料", e);
   }
 }
 
