@@ -30,6 +30,9 @@ const SHEET_URL = "https://script.google.com/macros/s/AKfycbyGg4migSNg5R7OpdjGle
 let data = load();
 let _syncTimer = null;
 let _lastSync = null;
+let _isGitHubSyncing = false;
+let _hasPendingGitHubSync = false;
+let _cachedGitHubSha = null; // 快取最新 SHA，減少 API 查詢
 
 function load(){
   try { return JSON.parse(localStorage.getItem(STORAGE)) || structuredClone(seed); }
@@ -58,8 +61,7 @@ async function getGitHubFileSha() {
       headers: {
         Authorization: `token ${token}`,
         Accept: "application/vnd.github.v3+json"
-      },
-      cache: "no-store"
+      }
     });
     if (res.ok) {
       const json = await res.json();
@@ -69,6 +71,81 @@ async function getGitHubFileSha() {
     console.error("無法取得 GitHub 檔案 SHA:", err);
   }
   return null;
+}
+
+// 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (防連續發送隊列版)
+async function syncToGitHub() {
+  const token = getGitHubToken();
+  if (!token || !GITHUB_CONFIG.owner || !GITHUB_CONFIG.repo) return;
+
+  // 如果目前正在同步中，標記有新修改等待中，然後直接退出（避免重複衝突）
+  if (_isGitHubSyncing) {
+    _hasPendingGitHubSync = true;
+    console.log("[GitHub Sync] 正在同步中，已將新操作排入佇列...");
+    return;
+  }
+
+  // 鎖定同步狀態
+  _isGitHubSyncing = true;
+
+  try {
+    // 優先使用上次 Commit 回傳的最新 SHA，若無則向 API 獲取
+    let sha = _cachedGitHubSha;
+    if (!sha) {
+      sha = await getGitHubFileSha();
+    }
+
+    // 將 JSON 轉為 UTF-8 Base64 編碼
+    const jsonString = JSON.stringify(data, null, 2);
+    const contentEncoded = btoa(unescape(encodeURIComponent(jsonString)));
+
+    const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.filePath}`;
+    const body = {
+      message: `auto: update boyfriend data [${new Date().toLocaleString()}]`,
+      content: contentEncoded,
+      branch: GITHUB_CONFIG.branch
+    };
+    if (sha) body.sha = sha;
+
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/vnd.github.v3+json"
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (res.ok) {
+      const resJson = await res.json();
+      // 更新快取的 SHA 為 GitHub 剛產生的最新 SHA
+      if (resJson.content && resJson.content.sha) {
+        _cachedGitHubSha = resJson.content.sha;
+      }
+      console.log("[GitHub Sync] 成功同步最新 JSON 到 GitHub Repo！");
+      toast("已自動更新至 GitHub 檔案");
+    } else {
+      const errJson = await res.json();
+      console.error("[GitHub Sync] 同步失敗:", errJson);
+      // 清空快取的 SHA，讓下一次重試重新向 API 查詢
+      _cachedGitHubSha = null;
+    }
+  } catch (err) {
+    console.error("[GitHub Sync] 發生錯誤:", err);
+    _cachedGitHubSha = null;
+  } finally {
+    // 解除同步鎖定
+    _isGitHubSyncing = false;
+
+    // 如果在剛才同步期間又有新的修改（_hasPendingGitHubSync 為 true），立刻觸發下一輪同步
+    if (_hasPendingGitHubSync) {
+      _hasPendingGitHubSync = false;
+      console.log("[GitHub Sync] 處理佇列中的累積修改...");
+      // 給予 500ms 緩衝時間讓 GitHub 伺服器寫入完畢
+      setTimeout(() => syncToGitHub(), 500);
+    }
+  }
 }
 
 // 自動提交並覆蓋 GitHub Repository 內的 JSON 檔案 (修復 409 SHA 衝突問題)
